@@ -43,7 +43,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class S3Test {
+public class S3TestIntegration {
 
   private static FileSystemManager fsManager;
   private static String HELLO_S3_STR = "Hello S3 VFS";
@@ -66,7 +66,7 @@ public class S3Test {
     fsManager = VFS.getManager();
 
     Properties settings = new Properties();
-    settings.load( S3Test.class.getResourceAsStream( "/test-settings.properties" ) );
+    settings.load( S3TestIntegration.class.getResourceAsStream( "/test-settings.properties" ) );
     awsAccessKey = settings.getProperty( "awsAccessKey" );
     awsSecretKey = settings.getProperty( "awsSecretKey" );
 
@@ -291,6 +291,36 @@ public class S3Test {
     out.close();
 
     bucket = fsManager.resolveFile( buildS3URL( "/mdamour_list_children_test" ) );
+    printFileObject( bucket, 0 );
+
+    bucket.delete( deleteFileSelector );
+    assertEquals( false, bucket.exists() );
+  }
+
+  @Test
+  public void doGetType() throws Exception {
+    assertNotNull( "FileSystemManager is null", fsManager );
+
+    FileObject bucket = fsManager.resolveFile( buildS3URL( "/mdamour_get_type_test" ) );
+    // assertEquals(false, bucket.exists());
+    bucket.createFolder();
+    assertEquals( true, bucket.exists() );
+
+    FileObject s3FileOut = fsManager.resolveFile( buildS3URL( "/mdamour_get_type_test/child01" ) );
+    s3FileOut.createFile();
+    OutputStream out = s3FileOut.getContent().getOutputStream();
+    out.write( HELLO_S3_STR.getBytes() );
+    out.close();
+    assertEquals( "Is not a folder type", FileType.FOLDER, bucket.getType() );
+    assertEquals( "Is not a file type", FileType.FILE, s3FileOut.getType() );
+
+    fsManager.closeFileSystem( bucket.getFileSystem() );
+    assertEquals( "Is not a folder type (after clearing cache)", FileType.FOLDER,
+      fsManager.resolveFile( buildS3URL( "/mdamour_get_type_test" ) ).getType() );
+    assertEquals( "Is not a file type (after clearing cache)", FileType.FILE,
+      fsManager.resolveFile( buildS3URL( "/mdamour_get_type_test/child01" ) ).getType() );
+
+    bucket = fsManager.resolveFile( buildS3URL( "/mdamour_get_type_test" ) );
     printFileObject( bucket, 0 );
 
     bucket.delete( deleteFileSelector );
