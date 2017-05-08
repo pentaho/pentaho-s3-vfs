@@ -110,7 +110,8 @@ public class S3FileObject extends AbstractFileObject {
         }
       }
     } catch ( Exception ex ) {
-      //ignored
+      System.out.println("An error occured while trying to perform getS3Object:");
+      ex.printStackTrace();  // helpful debug info
     }
     return null;
   }
@@ -149,6 +150,13 @@ public class S3FileObject extends AbstractFileObject {
           // wait for reader to finish
           t.join();
           S3Object s3Object = getS3Object( true, false );
+          
+          // check if object is null, otherwise
+          if (s3Object == null){
+        	  System.out.println("Unable to get S3 Object");
+        	  return;
+          }
+          
           byte[] bytes = output.toByteArray();
           s3Object.setContentLength( bytes.length );
           s3Object.setDataInputStream( new ByteArrayInputStream( bytes ) );
