@@ -1,5 +1,5 @@
 /*!
-* Copyright 2010 - 2013 Pentaho Corporation.  All rights reserved.
+* Copyright 2010 - 2017 Pentaho Corporation.  All rights reserved.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,6 +17,18 @@
 
 package org.pentaho.s3.vfs;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.FileType;
+import org.apache.commons.vfs2.provider.AbstractFileName;
+import org.apache.commons.vfs2.provider.AbstractFileObject;
+import org.jets3t.service.S3Service;
+import org.jets3t.service.S3ServiceException;
+import org.jets3t.service.ServiceException;
+import org.jets3t.service.model.S3Bucket;
+import org.jets3t.service.model.S3Object;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -28,17 +40,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileType;
-import org.apache.commons.vfs2.provider.AbstractFileName;
-import org.apache.commons.vfs2.provider.AbstractFileObject;
-import org.jets3t.service.S3Service;
-import org.jets3t.service.S3ServiceException;
-import org.jets3t.service.model.S3Bucket;
-import org.jets3t.service.model.S3Object;
 
 public class S3FileObject extends AbstractFileObject {
 
@@ -95,7 +96,12 @@ public class S3FileObject extends AbstractFileObject {
 
       if ( !name.equals( "" ) ) {
         try {
-          S3Object object = getObjectFromS3( name, needContent );
+          S3Object object;
+          if( needContent ) {
+            object = getObjectFromS3(name);
+          } else {
+            object = getObjectDetailsFromS3(name);
+          }
           if ( deleteIfAlreadyExists ) {
             fileSystem.getS3Service().deleteObject( getS3BucketName(), name );
             object = new S3Object( name );
@@ -115,11 +121,13 @@ public class S3FileObject extends AbstractFileObject {
     return null;
   }
 
-  private S3Object getObjectFromS3( String name, Boolean needContent ) throws S3ServiceException, IOException {
+  private S3Object getObjectDetailsFromS3( String name ) throws ServiceException, IOException {
+    S3Object S3Object = (S3Object) fileSystem.getS3Service().getObjectDetails( getS3BucketName(), name, null, null, null, null);
+    return S3Object;
+  }
+
+  private S3Object getObjectFromS3( String name ) throws S3ServiceException, IOException {
     S3Object s3Object = fileSystem.getS3Service().getObject( getS3BucketName(), name );
-    if ( !needContent && s3Object != null ) {
-      s3Object.closeDataInputStream();
-    }
     return s3Object;
   }
 
@@ -187,7 +195,7 @@ public class S3FileObject extends AbstractFileObject {
     }
     S3Object objectEndsWithDelimiter = null;
     try {
-      objectEndsWithDelimiter = getObjectFromS3( s3Path, false );
+      objectEndsWithDelimiter = getObjectDetailsFromS3( s3Path );
     } catch ( Exception e ) {
       try {
         if ( fileSystem.getS3Service().listObjects( getS3BucketName(), s3Path, null ).length != 0 ) {
