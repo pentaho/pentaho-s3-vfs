@@ -1,5 +1,5 @@
 /*!
-* Copyright 2010 - 2013 Pentaho Corporation.  All rights reserved.
+* Copyright 2010 - 2018 Hitachi Vantara.  All rights reserved.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileObject;
 import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
+import org.jets3t.service.ServiceException;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
 
@@ -115,10 +116,12 @@ public class S3FileObject extends AbstractFileObject {
     return null;
   }
 
-  private S3Object getObjectFromS3( String name, Boolean needContent ) throws S3ServiceException, IOException {
-    S3Object s3Object = fileSystem.getS3Service().getObject( getS3BucketName(), name );
-    if ( !needContent && s3Object != null ) {
-      s3Object.closeDataInputStream();
+  private S3Object getObjectFromS3( String name, Boolean needContent ) throws ServiceException, IOException {
+    S3Object s3Object;
+    if ( needContent ) {
+      s3Object = fileSystem.getS3Service().getObject( getS3BucketName(), name );
+    } else {
+      s3Object = (S3Object) fileSystem.getS3Service().getObjectDetails( getS3BucketName(), name, null, null, null, null );
     }
     return s3Object;
   }
