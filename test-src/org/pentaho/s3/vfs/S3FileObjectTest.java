@@ -1,5 +1,5 @@
 /*!
-* Copyright 2010 - 2013 Pentaho Corporation.  All rights reserved.
+* Copyright 2010 - 2018 Hitachi Vantara.  All rights reserved.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -28,16 +28,26 @@ import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.jets3t.service.model.StorageObject;
 
 import java.io.OutputStream;
 import java.util.Calendar;
 
-import static org.junit.Assert.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 /**
  * created by: dzmitry_bahdanovich date:       10/18/13
@@ -65,6 +75,7 @@ public class S3FileObjectTest {
     s3ServiceMock = mock( S3Service.class );
     S3Bucket testBucket = new S3Bucket( BUCKET_NAME );
     S3Object s3Object = new S3Object( OBJECT_NAME );
+    StorageObject storageObject = new StorageObject( OBJECT_NAME );
 
     filename =
       new S3FileName( SCHEME, HOST, PORT, PORT, awsAccessKey, awsSecretKey, "/" + BUCKET_NAME + "/" + OBJECT_NAME,
@@ -88,8 +99,9 @@ public class S3FileObjectTest {
     when( s3ServiceMock.getBucket( BUCKET_NAME ) ).thenReturn( testBucket );
     when( s3ServiceMock.getObject( testBucket, OBJECT_NAME ) ).thenReturn( s3Object );
     when( s3ServiceMock.getObject( BUCKET_NAME, OBJECT_NAME ) ).thenReturn( s3Object );
-    when( s3ServiceMock.createBucket( BUCKET_NAME ) )
-      .thenThrow( new S3ServiceException() ); // throw exception if bucket exists
+    when( s3ServiceMock.getObjectDetails( BUCKET_NAME, OBJECT_NAME, null, null, null, null ) ).thenReturn( storageObject );
+    when( s3ServiceMock.createBucket( BUCKET_NAME ) ).thenThrow( new S3ServiceException() ); // throw exception if bucket exists
+
     when( fileSystemSpy.getS3Service() ).thenReturn( s3ServiceMock );
     when( s3FileObjectSpy.getS3Bucket() ).thenReturn( testBucket );
 
