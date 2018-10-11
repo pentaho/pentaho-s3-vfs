@@ -17,27 +17,29 @@
 
 package org.pentaho.s3n.vfs;
 
-import java.util.Collection;
-
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileSystem;
+import org.jets3t.service.S3Service;
+import org.jets3t.service.impl.rest.httpclient.RestS3Service;
+import org.jets3t.service.security.AWSCredentials;
+import org.jets3t.service.security.ProviderCredentials;
+
+import java.util.Collection;
 
 public class S3NFileSystem extends AbstractFileSystem implements FileSystem {
 
-  private AmazonS3 client;
+  private S3Service service;
 
   protected S3NFileSystem( final FileName rootName, final FileSystemOptions fileSystemOptions ) {
     super( rootName, null, fileSystemOptions );
   }
 
-  @SuppressWarnings( "unchecked" )
-  protected void addCapabilities( Collection caps ) {
+  @SuppressWarnings( "unchecked" ) protected void addCapabilities( Collection caps ) {
     caps.addAll( S3NFileProvider.capabilities );
   }
 
@@ -45,17 +47,20 @@ public class S3NFileSystem extends AbstractFileSystem implements FileSystem {
     return new S3NFileObject( name, this );
   }
 
-  public AmazonS3 getS3Client() {
-    if ( client == null ) {
+  public S3Service getS3Service() {
+    if ( service == null || service.getProviderCredentials() == null
+        || service.getProviderCredentials().getAccessKey() == null ) {
+      com.amazonaws.auth.AWSCredentials credentials = DefaultAWSCredentialsProviderChain.getInstance().getCredentials();
+      ProviderCredentials
+          awsCredentials =
+          new AWSCredentials( credentials.getAWSAccessKeyId(), credentials.getAWSSecretKey() );
       try {
-        client = AmazonS3ClientBuilder.standard()
-          .enableForceGlobalBucketAccess()
-          .build();
+        service = new RestS3Service( awsCredentials );
       } catch ( Throwable t ) {
-        System.out.println( "Could not get an S3Client" );
+        System.out.println( "Could not getS3Service() for " + awsCredentials.getLogString() );
         t.printStackTrace();
       }
     }
-    return client;
+    return service;
   }
 }
