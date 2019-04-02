@@ -1,5 +1,5 @@
 /*!
-* Copyright 2010 - 2017 Hitachi Vantara.  All rights reserved.
+* Copyright 2010 - 2019 Hitachi Vantara.  All rights reserved.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -43,18 +43,18 @@ public class S3FileNameParserTest {
   public void testParseUri() throws Exception {
     VfsComponentContext context = mock( VfsComponentContext.class );
     FileName fileName = mock( FileName.class );
-    String uri = "s3://hostname:8080/bucket";
+    String uri = "s3://bucket/file";
     FileName noBaseFile = parser.parseUri( context, null, uri );
     assertNotNull( noBaseFile );
+    assertEquals( "bucket", ( (S3FileName) noBaseFile ).getBucketId() );
     FileName withBaseFile = parser.parseUri( context, fileName, uri );
     assertNotNull( withBaseFile );
+    assertEquals( "bucket", ( (S3FileName) withBaseFile ).getBucketId() );
 
+    // assumption is that the whole URL is valid until it comes time to resolve to S3 objects
+    uri = "s3://s3/bucket/file";
+    withBaseFile = parser.parseUri( context, fileName, uri );
+    assertEquals( "s3", ( (S3FileName)withBaseFile ).getBucketId() );
   }
 
-  @Test
-  public void testEncodeAccessKeys() throws Exception {
-    String fullUrl = "s3://ABC123456DEF7890:A+123456BCD99/99999999ZZZ+B@S3hostname:8080/bucket";
-    String encodedUrl = ( (S3FileNameParser) parser ).encodeAccessKeys( fullUrl );
-    assertEquals( "s3://ABC123456DEF7890:A%2B123456BCD99%2F99999999ZZZ%2BB@S3hostname:8080/bucket", encodedUrl );
-  }
 }
