@@ -109,7 +109,8 @@ public class S3FileObject extends S3CommonFileObject {
   @Override
   protected OutputStream doGetOutputStream( boolean bAppend ) throws Exception {
     SimpleEntry<String, String> newPath = fixFilePath( key, bucketName );
-    return new S3CommonPipedOutputStream( this.fileSystem, newPath.getValue(), newPath.getKey() );
+    return new S3CommonPipedOutputStream( this.fileSystem, newPath.getValue(), newPath.getKey(),
+            ( ( S3FileSystem ) this.fileSystem ).getPartSize() );
   }
 
   @Override
