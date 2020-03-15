@@ -39,15 +39,16 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.FilesCache;
 import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.apache.commons.vfs2.provider.VfsComponentContext;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.mockito.ArgumentCaptor;
+
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.pentaho.di.core.KettleEnvironment;
 
 import static java.util.AbstractMap.SimpleEntry;
 import static org.junit.Assert.assertEquals;
@@ -55,14 +56,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.*;
 
 /**
  * created by: dzmitry_bahdanovich date: 10/18/13
@@ -92,6 +86,11 @@ public class S3FileObjectTest {
   private long contentLength = 42;
   private final String origKey = "some/key";
   private Date testDate = new Date();
+
+  @BeforeClass
+  public static void initKettle() throws Exception {
+    KettleEnvironment.init( false );
+  }
 
   @Before
   public void setUp() throws Exception {
@@ -179,10 +178,11 @@ public class S3FileObjectTest {
     assertNotNull( s3FileObjectBucketSpy.doGetOutputStream( false ) );
     OutputStream out = s3FileObjectBucketSpy.doGetOutputStream( true );
     assertNotNull( out );
-    out.write( new byte[ 1024 * 1024 * 6 ] );
+    out.write( new byte[ 1024 * 1024 * 6 ] ); // 6MB
     out.close();
 
-    verify( s3ServiceMock, times( 2 ) ).uploadPart( any() );
+    // check kettle.properties 's3.vfs.partSize' is less than [5MB, 6MB)
+    verify(s3ServiceMock, times(2) ).uploadPart(any());
     verify( s3ServiceMock, atMost( 1 ) ).completeMultipartUpload( any() );
   }
 
