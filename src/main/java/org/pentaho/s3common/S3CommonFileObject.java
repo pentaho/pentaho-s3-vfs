@@ -211,7 +211,10 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
     }
     try {
       // 1. Is it an existing file?
-      s3ObjectMetadata = fileSystem.getS3Client().getObjectMetadata( bucketName, key );
+      if ( s3Object == null ) {
+        s3Object = getS3Object();
+        s3ObjectMetadata = s3Object.getObjectMetadata();
+      }
       injectType( getName().getType() ); // if this worked then the automatically detected type is right
     } catch ( AmazonS3Exception e ) { // S3 object doesn't exist
       // 2. Is it in reality a folder?
@@ -224,7 +227,8 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
   protected void handleAttachException( String key, String bucket ) throws IOException {
     String keyWithDelimiter = key + DELIMITER;
     try {
-      s3ObjectMetadata = fileSystem.getS3Client().getObjectMetadata( bucketName, key );
+      s3Object = getS3Object( keyWithDelimiter, bucket );
+      s3ObjectMetadata = s3Object.getObjectMetadata();
       injectType( FileType.FOLDER );
       this.key = keyWithDelimiter;
     } catch ( AmazonS3Exception e2 ) {
@@ -338,9 +342,9 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
       throw new FileSystemException( "vfs.provider/rename-not-supported.error" );
     }
 
-    s3ObjectMetadata = fileSystem.getS3Client().getObjectMetadata( bucketName, key );
+    s3Object = getS3Object();
 
-    if ( s3ObjectMetadata == null ) {
+    if ( s3Object == null ) {
       // object doesn't exist
       throw new FileSystemException( "vfs.provider/rename.error", this, newFile );
     }
