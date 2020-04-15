@@ -1,5 +1,5 @@
 /*!
- * Copyright 2010 - 2020 Hitachi Vantara.  All rights reserved.
+ * Copyright 2010 - 2019 Hitachi Vantara.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
   protected String bucketName;
   protected String key;
   protected S3Object s3Object;
-  protected ObjectMetadata s3ObjectMetadata;
   protected InputStream s3ObjectInputStream;
   protected FileType fileType;
 
@@ -71,9 +70,8 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
   @Override
   protected InputStream doGetInputStream() throws Exception {
     logger.debug( "Accessing content {}", getQualifiedName() );
-    closeS3Object();
-    S3Object streamS3Object = getS3Object();
-    s3ObjectInputStream = new MonitorInputStream( streamS3Object.getObjectContent() );
+    activateContent();
+    s3ObjectInputStream = new MonitorInputStream( s3Object.getObjectContent() );
     return s3ObjectInputStream;
   }
 
@@ -226,20 +224,24 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
     }
     try {
       // 1. Is it an existing file?
-      s3ObjectMetadata = fileSystem.getS3Client().getObjectMetadata( bucketName, key );
+      if ( s3Object == null ) {
+        s3Object = getS3Object();
+      }
       injectType( getName().getType() ); // if this worked then the automatically detected type is right
     } catch ( AmazonS3Exception e ) { // S3 object doesn't exist
       // 2. Is it in reality a folder?
       handleAttachException( key, bucketName );
     } finally {
-      closeS3Object();
+      if ( s3Object != null ) {
+        s3Object.close();
+      }
     }
   }
 
-  protected void handleAttachException( String key, String bucket ) throws IOException {
+  protected void handleAttachException( String key, String bucket ) throws Exception {
     String keyWithDelimiter = key + DELIMITER;
     try {
-      s3ObjectMetadata = fileSystem.getS3Client().getObjectMetadata( bucketName, key );
+      s3Object = getS3Object( keyWithDelimiter, bucket );
       injectType( FileType.FOLDER );
       this.key = keyWithDelimiter;
     } catch ( AmazonS3Exception e2 ) {
@@ -263,21 +265,18 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
         }
       }
     } finally {
-      closeS3Object();
-    }
-  }
-
-  private void closeS3Object() throws IOException {
-    if ( s3Object != null ) {
-      s3Object.close();
-      s3Object = null;
+      if ( s3Object != null ) {
+        s3Object.close();
+      }
     }
   }
 
   @Override
   public void doDetach() throws Exception {
-    logger.debug( "detaching {}", getQualifiedName() );
-    closeS3Object();
+    if ( s3Object != null ) {
+      logger.debug( "detaching {}", getQualifiedName() );
+      this.getS3Object().close();
+    }
     if ( s3ObjectInputStream != null ) {
       s3ObjectInputStream.close();
     }
@@ -317,7 +316,7 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
 
   @Override
   public long doGetLastModifiedTime() {
-    return s3ObjectMetadata.getLastModified().getTime();
+    return s3Object.getObjectMetadata().getLastModified().getTime();
   }
 
   @Override
@@ -356,9 +355,7 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
       throw new FileSystemException( "vfs.provider/rename-not-supported.error" );
     }
 
-    s3ObjectMetadata = fileSystem.getS3Client().getObjectMetadata( bucketName, key );
-
-    if ( s3ObjectMetadata == null ) {
+    if ( s3Object == null ) {
       // object doesn't exist
       throw new FileSystemException( "vfs.provider/rename.error", this, newFile );
     }

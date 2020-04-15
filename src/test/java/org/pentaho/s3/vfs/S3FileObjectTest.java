@@ -143,7 +143,7 @@ public class S3FileObjectTest {
     s3ObjectInputStream = mock( S3ObjectInputStream.class );
     s3ObjectMetadata = mock( ObjectMetadata.class );
     when( s3ObjectMock.getObjectContent() ).thenReturn( s3ObjectInputStream );
-    when( s3ServiceMock.getObjectMetadata( anyString(), anyString() ) ).thenReturn( s3ObjectMetadata );
+    when( s3ObjectMock.getObjectMetadata() ).thenReturn( s3ObjectMetadata );
     when( s3ObjectMetadata.getContentLength() ).thenReturn( contentLength );
     when( s3ObjectMetadata.getLastModified() ).thenReturn( testDate );
     when( s3ServiceMock.getObject( anyString(), anyString() ) ).thenReturn( s3ObjectMock );
@@ -248,7 +248,6 @@ public class S3FileObjectTest {
     S3FileObject newFile = new S3FileObject( newFileName, fileSystemSpy );
     ArgumentCaptor<CopyObjectRequest> copyObjectRequestArgumentCaptor = ArgumentCaptor.forClass( CopyObjectRequest.class );
     when( s3ServiceMock.doesBucketExistV2( someNewBucketName ) ).thenReturn( true );
-    s3FileObjectFileSpy.doAttach();
     s3FileObjectFileSpy.moveTo( newFile );
 
     verify( s3ServiceMock ).copyObject( copyObjectRequestArgumentCaptor.capture() );
@@ -303,6 +302,13 @@ public class S3FileObjectTest {
     SimpleEntry<String, String> newPath = s3FileObjectBucketSpy.fixFilePath( key, bucketName );
     assertEquals( "bucketName", newPath.getValue() );
     assertEquals( "", newPath.getKey() );
+  }
+
+  @Test
+  public void testDoDetach() throws Exception {
+    s3FileObjectFileSpy.doAttach();
+    s3FileObjectFileSpy.doDetach();
+    verify( s3ObjectMock, times( 2 ) ).close();
   }
 
   @Test
