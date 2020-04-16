@@ -32,7 +32,6 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileObject;
-import org.apache.commons.vfs2.util.MonitorInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,8 +52,6 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
   protected String key;
   protected S3Object s3Object;
   protected ObjectMetadata s3ObjectMetadata;
-  protected InputStream s3ObjectInputStream;
-  protected FileType fileType;
 
   protected S3CommonFileObject( final AbstractFileName name, final S3CommonFileSystem fileSystem ) {
     super( name, fileSystem );
@@ -65,7 +62,7 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
 
   @Override
   protected long doGetContentSize() {
-    return getS3Object().getObjectMetadata().getContentLength();
+    return s3ObjectMetadata.getContentLength();
   }
 
   @Override
@@ -73,27 +70,12 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
     logger.debug( "Accessing content {}", getQualifiedName() );
     closeS3Object();
     S3Object streamS3Object = getS3Object();
-    s3ObjectInputStream = new MonitorInputStream( streamS3Object.getObjectContent() );
-    return s3ObjectInputStream;
+    return new S3CommonFileInputStream( streamS3Object.getObjectContent(), streamS3Object );
   }
 
   @Override
   protected FileType doGetType() throws Exception {
     return getType();
-  }
-
-  @Override
-  protected void injectType( FileType fileType ) {
-    this.fileType = fileType;
-    super.injectType( fileType );
-  }
-
-  @Override
-  public FileType getType() throws FileSystemException {
-    if ( fileType == null ) {
-      fileType = super.getType();
-    }
-    return fileType;
   }
 
   @Override
@@ -116,7 +98,7 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
       bucket = bucket.substring( 1, bucket.indexOf( DELIMITER, 1 ) );
     } else {
       // this file is a bucket
-      bucket = bucket.replaceAll( DELIMITER, "" );
+      bucket = bucket.replace( DELIMITER, "" );
     }
     return bucket;
   }
@@ -198,18 +180,6 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
     }
   }
 
-  @VisibleForTesting
-  protected S3Object activateContent() throws IOException {
-    if ( s3Object != null ) {
-      // force it to re-create the object
-      s3Object.close();
-      s3Object = null;
-    }
-
-    s3Object = getS3Object();
-    return s3Object;
-  }
-
   protected boolean isRootBucket() {
     return key.equals( "" );
   }
@@ -278,9 +248,6 @@ public abstract class S3CommonFileObject extends AbstractFileObject {
   public void doDetach() throws Exception {
     logger.debug( "detaching {}", getQualifiedName() );
     closeS3Object();
-    if ( s3ObjectInputStream != null ) {
-      s3ObjectInputStream.close();
-    }
   }
 
   @Override
