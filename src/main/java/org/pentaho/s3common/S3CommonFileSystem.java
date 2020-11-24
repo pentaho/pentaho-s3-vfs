@@ -1,5 +1,5 @@
 /*!
- * Copyright 2010 - 2019 Hitachi Vantara.  All rights reserved.
+ * Copyright 2010 - 2020 Hitachi Vantara.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,6 +89,7 @@ public abstract class S3CommonFileSystem extends AbstractFileSystem {
     if ( awsConfigFolder.exists() ) {
       return true;
     }
-    return false;
+    //When running on an Amazon EC2 instance getCurrentRegion will get its region. Null if not running in an EC2 instance
+    return Regions.getCurrentRegion() != null;
   }
 }
