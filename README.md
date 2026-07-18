@@ -1,4 +1,4 @@
-# Hitachi Vantara S3 VFS
+# Pentaho S3 VFS
 
 This project is retired as of 23/03/2020 per https://jira.pentaho.com/browse/BACKLOG-33640.
 
